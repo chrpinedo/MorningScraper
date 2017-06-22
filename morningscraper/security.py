@@ -110,4 +110,6 @@ class ETFPage(SecurityPage):
             text = line.parent.nextSibling.nextSibling.text
             self.data_[keyword] = str(text)
         line = soup.find(text="Closing Price")
-        self.data_["currency"] = line.parent.nextSibling.nextSibling.text[:3]
+        if line is not None:
+            self.data_["currency"] = \
+                line.parent.nextSibling.nextSibling.text[:3]
