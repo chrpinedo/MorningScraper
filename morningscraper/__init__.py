@@ -33,6 +33,12 @@ def fix_url(url):
     return url
 
 
+def make_soup(url, parser="html.parser"):
+    response = urlopen(url)
+    soup = BeautifulSoup(response, parser)
+    return soup
+
+
 def search(ref, verbose=False):
     ''' Search morningstar.co.uk for ref
 
@@ -75,8 +81,7 @@ def search(ref, verbose=False):
 
     if verbose:
         print('Search for: %s' % ref)
-    data = urlopen(SEARCH_BASE % quote(ref)).read()
-    parsed_html = BeautifulSoup(data)
+    parsed_html = make_soup(SEARCH_BASE % quote(ref))
     results = []
     stocks = parsed_html.find_all(
         'table', id='ctl00_MainContent_stockTable'
@@ -93,25 +98,29 @@ def search(ref, verbose=False):
                     'td', class_='searchCurrency'
                 )[0].text,
             })
-    funds = parsed_html.find_all(
-        'table', id='ctl00_MainContent_fundTable'
-    )
-    if funds:
-        funds = funds[0].find_all('tr')[1:]
-        for fund in funds:
-            data = fund.find_all('td')
-            results.append({
-                'name': data[0].text,
-                'url': fix_url(data[0].a.get('href')),
-                'type': 'Fund',
-                'ISIN': data[1].text,
-            })
+
+    funds = []
+    for instrument_type in ["fund", "etf"]:
+        funds = parsed_html.find_all(
+            'table', id='ctl00_MainContent_{}Table'.format(instrument_type)
+        )
+        if funds:
+            funds = funds[0].find_all('tr')[1:]
+            for fund in funds:
+                data = fund.find_all('td')
+                results.append({
+                    'name': data[0].text,
+                    'url': fix_url(data[0].a.get('href')),
+                    'type': instrument_type,
+                    'ISIN': data[1].text,
+                })
+            break
 
     if verbose:
         if results:
             print('%s item(s) found.' % len(results))
             for item in results:
-                print('\t%s\t%s' % (item['type'], item['name']))
+                print(item)
         else:
             print('No items found.')
     return results
@@ -190,6 +199,11 @@ def get_url(url, verbose=False):
             result = _get_stock(url)
         except:
             result = None
+    elif '/uk/etf/' in url:
+        try:
+            result = _get_etf(url)
+        except:
+            result = None
     else:
         raise Exception('Unrecognised url %r' % url)
     if verbose:
@@ -201,8 +215,7 @@ def _get_funds(url):
     ''' Get and parse returned html for fund pages e.g.
         http://www.morningstar.co.uk/uk/funds/snapshot/snapshot.aspx?id=F00000NGEH
     '''
-    data = urlopen(url).read()
-    parsed_html = BeautifulSoup(data)
+    parsed_html = make_soup(url)
     title = parsed_html.find_all('div', class_='snapshotTitleBox')[0].h1.text
     table = parsed_html.find_all('table', class_='overviewKeyStatsTable')[0]
     for tr in table.find_all('tr'):
@@ -226,6 +239,20 @@ def _get_funds(url):
         'ISIN': isin,
         'type': 'Fund',
     }
+
+
+def _get_etf(url):
+    soup = make_soup(url)
+    text = soup.find_all('div', class_='snapshotTitleBox')[0].h1.text
+    result = {"name": text.split('|')[0].strip(),
+              "ticker": text.split('|')[1].strip()}
+    for keyword in ["Exchange", "ISIN"]:
+        line = soup.find(text=keyword)
+        if line is None:
+            continue
+        text = line.parent.nextSibling.nextSibling.text
+        result[keyword] = str(text)
+    return result
 
 
 def _get_stock(url):
@@ -255,6 +282,8 @@ def _get_stock(url):
 
 
 if __name__ == '__main__':
+    search('EWJ', verbose=True)
+    get_data('EWJ', verbose=True)
     get_data('GB00B54RK123', verbose=True)
     get_data('LLOY LSE', verbose=True)
     get_data('GOOG NASDAQ', verbose=True)
