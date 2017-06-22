@@ -6,6 +6,8 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup
 
+from security import make_soup, SecurityPage
+
 
 if sys.version_info[0] == 3:
     from urllib.request import urlopen
@@ -31,12 +33,6 @@ def fix_url(url):
     if url.startswith('/'):
         url = SITE_BASE + url
     return url
-
-
-def make_soup(url, parser="html.parser"):
-    response = urlopen(url)
-    soup = BeautifulSoup(response, parser)
-    return soup
 
 
 def search(ref, verbose=False):
@@ -99,7 +95,6 @@ def search(ref, verbose=False):
                 )[0].text,
             })
 
-    funds = []
     for instrument_type in ["fund", "etf"]:
         funds = parsed_html.find_all(
             'table', id='ctl00_MainContent_{}Table'.format(instrument_type)
@@ -188,101 +183,15 @@ def get_url(url, verbose=False):
         print('\nOpening %s' % url)
     if not urlsplit(url).netloc.endswith(SITE):
         raise Exception('Non morningstar.co.uk url %r' % url)
-    result = None
-    if '/uk/funds/snapshot/snapshot' in url:
-        try:
-            result = _get_funds(url)
-        except:
-            result = None
-    elif '/uk/stockreport/' in url:
-        try:
-            result = _get_stock(url)
-        except:
-            result = None
-    elif '/uk/etf/' in url:
-        try:
-            result = _get_etf(url)
-        except:
-            result = None
-    else:
-        raise Exception('Unrecognised url %r' % url)
+    page = SecurityPage.from_url(url)
+    result = page.get_data()
     if verbose:
         print(result)
     return result
 
 
-def _get_funds(url):
-    ''' Get and parse returned html for fund pages e.g.
-        http://www.morningstar.co.uk/uk/funds/snapshot/snapshot.aspx?id=F00000NGEH
-    '''
-    parsed_html = make_soup(url)
-    title = parsed_html.find_all('div', class_='snapshotTitleBox')[0].h1.text
-    table = parsed_html.find_all('table', class_='overviewKeyStatsTable')[0]
-    for tr in table.find_all('tr'):
-        tds = tr.find_all('td')
-        if len(tds) != 3:
-            continue
-        if tds[0].text.startswith('NAV'):
-            date = tds[0].span.text
-            (currency, value) = tds[2].text.split()
-        if tds[0].text.startswith('Day Change'):
-            change = tds[2].text.strip()
-        if tds[0].text.startswith('ISIN'):
-            isin = tds[2].text.strip()
-    return {
-        'title': title,
-        'value': Decimal(value),
-        'currency': currency,
-        'change': change,
-        'date': dmy_2_date(date),
-        'url': url,
-        'ISIN': isin,
-        'type': 'Fund',
-    }
-
-
-def _get_etf(url):
-    soup = make_soup(url)
-    text = soup.find_all('div', class_='snapshotTitleBox')[0].h1.text
-    result = {"name": text.split('|')[0].strip(),
-              "ticker": text.split('|')[1].strip()}
-    for keyword in ["Exchange", "ISIN"]:
-        line = soup.find(text=keyword)
-        if line is None:
-            continue
-        text = line.parent.nextSibling.nextSibling.text
-        result[keyword] = str(text)
-    return result
-
-
-def _get_stock(url):
-    ''' Get and parse returned html for stock pages e.g.
-        http://tools.morningstar.co.uk/uk/stockreport/default.aspx?SecurityToken=0P000090RG]3]0]E0WWE$$ALL
-    '''
-    data = urlopen(url).read()
-    parsed_html = BeautifulSoup(data)
-    title = parsed_html.find_all('span', class_='securityName')[0].text
-    value = parsed_html.find_all('span', id='Col0Price')[0].text
-    change = parsed_html.find_all('span', id='Col0PriceDetail')[0].text
-    change = change.split('|')[1].strip()
-    date = parsed_html.find_all('p',  id='Col0PriceTime')[0].text[6:16]
-    currency = parsed_html.find_all('p',  id='Col0PriceTime')[0].text
-    currency = re.search(r'\|\s([A-Z]{3,4})\b', currency).group(1)
-    isin = parsed_html.find_all('td',  id='Col0Isin')[0].text
-    return {
-        'title': title,
-        'value': Decimal(value),
-        'currency': currency,
-        'change': change,
-        'date': dmy_2_date(date),
-        'url': url,
-        'ISIN': isin,
-        'type': 'Stock',
-    }
-
-
 if __name__ == '__main__':
-    search('EWJ', verbose=True)
+    # search('EWJ', verbose=True)
     get_data('EWJ', verbose=True)
     get_data('GB00B54RK123', verbose=True)
     get_data('LLOY LSE', verbose=True)
