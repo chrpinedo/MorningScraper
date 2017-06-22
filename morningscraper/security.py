@@ -101,7 +101,7 @@ class StockPage(SecurityPage):
 class ETFPage(SecurityPage):
     def _update_data(self, soup):
         text = soup.find_all('div', class_='snapshotTitleBox')[0].h1.text
-        self.data_["name"] = text.split('|')[0].strip(),
+        self.data_["name"] = text.split('|')[0].strip()
         self.data_["ticker"] = text.split('|')[1].strip()
         for keyword in ["Exchange", "ISIN"]:
             line = soup.find(text=keyword)
