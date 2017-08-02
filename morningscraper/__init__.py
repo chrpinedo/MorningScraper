@@ -1,19 +1,12 @@
 import sys
-import re
-
-from decimal import Decimal
 from datetime import datetime
-
-from bs4 import BeautifulSoup
-
 from security import make_soup, SecurityPage
 
 
 if sys.version_info[0] == 3:
-    from urllib.request import urlopen
     from urllib.parse import quote, urlsplit
 elif sys.version_info[0] == 2:
-    from urllib import urlopen, quote
+    from urllib import  quote
     from urlparse import urlsplit
 else:
     raise Exception('Python version 2 or 3 required')
@@ -191,9 +184,10 @@ def get_url(url, verbose=False):
 
 
 if __name__ == '__main__':
-    # search('EWJ', verbose=True)
-    get_data('EWJ', verbose=True)
-    get_data('GB00B54RK123', verbose=True)
-    get_data('LLOY LSE', verbose=True)
-    get_data('GOOG NASDAQ', verbose=True)
-    get_data('LU1023728089', verbose=True)
+    search('EWJ', verbose=True)
+    get_data('ASHR', verbose=True)
+    # get_data('GLD ETF', verbose=True)
+    # get_data('GB00B54RK123', verbose=True)
+    # get_data('LLOY LSE', verbose=True)
+    # get_data('GOOG NASDAQ', verbose=True)
+    # get_data('LU1023728089', verbose=True)
