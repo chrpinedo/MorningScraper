@@ -1,6 +1,6 @@
 import sys
 from datetime import datetime
-from security import make_soup, SecurityPage
+from morningscraper.security import make_soup, SecurityPage
 
 
 if sys.version_info[0] == 3:

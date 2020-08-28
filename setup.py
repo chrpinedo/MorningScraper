@@ -14,7 +14,7 @@ setup(
     url="https://github.com/tobes/MorningScraper",
     packages=find_packages(),
     long_description=long_desc,
-    install_requires=['beautifulsoup4 six'],
+    install_requires=['beautifulsoup4', 'six'],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities",
